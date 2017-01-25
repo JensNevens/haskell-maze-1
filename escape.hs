@@ -1,5 +1,6 @@
 import qualified System.Environment
 import Data.List (delete, elem)
+import Control.Monad
 
 main :: IO ()
 main = do [path] <- System.Environment.getArgs
@@ -33,10 +34,14 @@ escape maze =
     in markVisited maze visited
 
 elemIndexes :: [[Char]] -> [Char] -> [(Int,Int)]
-elemIndexes maze item =
-    let rows = length maze
-        cols = length $ head maze
-    in [ (r,c) | r <- [0..rows-1], c <- [0..cols-1], getItem maze (r,c) == item]
+elemIndexes maze item = do
+    row <- [0..rows-1]
+    let cols = length $ maze !! row
+    col <- [0..cols-1]
+    guard $ getItem maze (row,col) == item
+    return (row,col)
+  where
+    rows = length maze
 
 getItem :: [[Char]] -> (Int,Int) -> [Char]
 getItem maze (r,c) = [maze !! r !! c]
@@ -52,7 +57,7 @@ escapeLoop maze current goal free visited
     where possible_next = freeNeighbours maze current free
 
 freeNeighbours :: [[Char]] -> (Int, Int) -> [(Int, Int)] -> [(Int, Int)]
-freeNeighbours maze current free = filter (\x -> isNeighbour current x) free
+freeNeighbours maze current free = filter (isNeighbour current) free
 
 isNeighbour :: (Int, Int) -> (Int, Int) -> Bool
 isNeighbour (r1,c1) (r2,c2) = (r1 == r2 && abs (c1 - c2) == 1) || (c1 == c2 && abs (r1 - r2) == 1)
@@ -67,8 +72,9 @@ backtrack maze free visited
 markVisited :: [[Char]] -> [(Int, Int)] -> [[Char]]
 markVisited maze visited =
     let rows = length maze
-        cols = length $ head maze
-    in map (\r -> map (\c -> head $ getSymbol maze (r,c) visited) [0..cols-1]) [0..rows-1]
+    in map (\r -> let cols = length $ maze !! r
+                  in map (\c -> head $ getSymbol maze (r,c) visited) [0..cols-1])
+       [0..rows-1]
 
 getSymbol :: [[Char]] -> (Int,Int) -> [(Int,Int)] -> [Char]
 getSymbol maze pos visited
